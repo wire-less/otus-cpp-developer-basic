@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 
-int high_scores(std::string user_name, int attempts_count) {
+int high_scores(const std::string &user_name, int attempts_count) {
 
 	// resulting file
 	const std::string high_scores_filename = "high_scores.log";
