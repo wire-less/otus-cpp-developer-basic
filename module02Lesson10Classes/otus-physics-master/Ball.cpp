@@ -73,5 +73,5 @@ double Ball::getMass() const {
 
 // Реализация приватного метода вычисления массы
 double Ball::calculateMass(const double radius) const {
-    return M_PI * pow(radius, 3) * 4. / 3.;
+    return M_PI * pow(radius, 3) * 4.0 / 3.0;
 }

@@ -16,11 +16,15 @@ class Ball {
     // Конструктор по-умолчанию
     Ball() = default;
 
-    /*
+    /*    
     // Полный конструктор в олдскул стиле
     Ball(const Point& center, const Velocity& velocity, const double radius,
-    const Color& color) { center_ = center; velocity_ = velocity; radius_ =
-    radius; color_ = color; mass_ = M_PI * pow(radius_, 3) * 4. / 3.;
+         const Color& color) {
+        center_ = center;
+        velocity_ = velocity;
+        radius_ = radius;
+        color_ = color;
+        mass_ = M_PI * pow(radius_, 3) * 4. / 3.;
     }
     */
 
@@ -33,9 +37,9 @@ class Ball {
   private:
     Point center_;
     Velocity velocity_;
-    double radius_;
+    double radius_{0.0};
     Color color_;
-    double mass_;
+    double mass_{0.0};
 
     // Объявление приватного метода вычисления массы
     double calculateMass(const double radius) const;
