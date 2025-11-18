@@ -7,7 +7,7 @@
  */
 void Ball::setVelocity(const Velocity& velocity) {
     // TODO: место для доработки
-    ballVelocity = velocity;
+    velocity_ = velocity;
 }
 
 /**
@@ -15,7 +15,7 @@ void Ball::setVelocity(const Velocity& velocity) {
  */
 Velocity Ball::getVelocity() const {
     // TODO: место для доработки
-    return {ballVelocity};
+    return velocity_;
 }
 
 /**
@@ -28,7 +28,7 @@ Velocity Ball::getVelocity() const {
  */
 void Ball::draw(Painter& painter) const {
     // TODO: место для доработки
-    painter.draw(ballCenter, ballRadius, ballcolor);
+    painter.draw(center_, radius_, color_);
 }
 
 /**
@@ -37,7 +37,7 @@ void Ball::draw(Painter& painter) const {
  */
 void Ball::setCenter(const Point& center) {
     // TODO: место для доработки
-    ballCenter = center;
+    center_ = center;
 }
 
 /**
@@ -45,7 +45,7 @@ void Ball::setCenter(const Point& center) {
  */
 Point Ball::getCenter() const {
     // TODO: место для доработки
-    return {ballCenter};
+    return center_;
 }
 
 /**
@@ -55,7 +55,7 @@ Point Ball::getCenter() const {
  */
 double Ball::getRadius() const {
     // TODO: место для доработки
-    return {ballRadius};
+    return radius_;
 }
 
 /**
@@ -67,5 +67,11 @@ double Ball::getRadius() const {
  */
 double Ball::getMass() const {
     // TODO: место для доработки
-    return {M_PI * pow(ballRadius, 3) * 4. / 3.};
+    // перенести массу шара в новый конструктор
+    return mass_;
+}
+
+// Реализация приватного метода вычисления массы
+double Ball::calculateMass(const double radius) const {
+    return M_PI * pow(radius, 3) * 4. / 3.;
 }

@@ -67,15 +67,16 @@ World::World(const std::string& worldFilePath) {
 
         // После того как мы каким-то образом
         // сконструируем объект Ball ball;
-        
-        Point ballCenterDataRead{x, y};
-        Point ballVelocityData{vx, vy};
-        Velocity ballVelocityDataRead{ballVelocityData};
-        double ballRadiusDataRead {radius};
-        Color ballColorDataRead{red, green, blue};
-        
-        Ball ball{ballCenterDataRead, ballVelocityDataRead, ballRadiusDataRead, ballColorDataRead};
-                
+
+        Point centerDataRead{x, y};
+        Point velocityData{vx, vy};
+        Velocity velocityDataRead{velocityData};
+        double radiusDataRead{radius};
+        Color colorDataRead{red, green, blue};
+
+        Ball ball{centerDataRead, velocityDataRead, radiusDataRead,
+                  colorDataRead};
+
         // добавьте его в конец контейнера вызовом
         balls.push_back(ball);
     }
