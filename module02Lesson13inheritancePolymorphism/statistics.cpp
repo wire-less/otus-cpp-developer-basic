@@ -74,7 +74,7 @@ private:
 class Mean : public IStatistics
 {
 public:
-	Mean() : m_mean{0.0}
+	Mean() : m_counter{0}, m_sum{0.0}
 	{
 	}
 
@@ -82,12 +82,17 @@ public:
 	{
 		++m_counter;
 		m_sum += next;
-		m_mean = static_cast<double>(m_sum / m_counter);
 	}
 
 	double eval() const override
 	{
-		return m_mean;
+		// код ошибки "деление на 0"
+		if (m_counter == 0)
+		{
+			return -101010.0;
+		}
+
+		return static_cast<double>(m_sum / m_counter);
 	}
 
 	const char *name() const override
@@ -96,9 +101,8 @@ public:
 	}
 
 private:
-	int m_counter{0};
-	double m_sum{0.0};
-	double m_mean;
+	int m_counter;
+	double m_sum;
 };
 
 class Std : public IStatistics
@@ -114,9 +118,10 @@ public:
 
 	double eval() const override
 	{
+		// код ошибки "деление на 0"
 		if (m_seq.empty())
 		{
-			return 0.0;
+			return -101010.0;
 		}
 
 		double sum{0.0};
@@ -135,8 +140,7 @@ public:
 			double deviation = nextVal - mean;
 			sum += pow(deviation, 2);
 		}
-
-		// возвратить результат метода
+		// и возвратить результат метода
 		return sqrt(static_cast<double>(sum / m_seq.size()));
 	}
 
