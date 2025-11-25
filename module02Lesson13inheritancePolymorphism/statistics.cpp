@@ -6,6 +6,8 @@
 class IStatistics
 {
 public:
+	const double divByZeroErrCode = -101010.0;
+
 	virtual ~IStatistics() {}
 
 	virtual void update(double next) = 0;
@@ -89,7 +91,7 @@ public:
 		// код ошибки "деление на 0"
 		if (m_counter == 0)
 		{
-			return -101010.0;
+			return divByZeroErrCode;
 		}
 
 		return static_cast<double>(m_sum / m_counter);
@@ -121,7 +123,7 @@ public:
 		// код ошибки "деление на 0"
 		if (m_seq.empty())
 		{
-			return -101010.0;
+			return divByZeroErrCode;
 		}
 
 		double sum{0.0};
