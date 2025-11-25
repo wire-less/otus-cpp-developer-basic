@@ -24,7 +24,7 @@ class Ball {
         velocity_ = velocity;
         radius_ = radius;
         color_ = color;
-        mass_ = M_PI * pow(radius_, 3) * 4. / 3.;
+        mass_ = M_PI * pow(radius_, 3) * 4.0 / 3.0;
     }
     */
 
