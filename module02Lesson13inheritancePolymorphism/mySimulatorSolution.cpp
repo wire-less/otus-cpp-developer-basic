@@ -3,22 +3,24 @@
 #include <vector>
 #include <cmath>
 #include <stdexcept>
+#include <memory>
 
-class Statistics {
+class Statistics
+{
 public:
-    virtual ~Statistics() = default;
-    // Задает следующее значение из входной последовательности
-    virtual void update(double next) = 0;
-    // Возвращает величину статистической характеристики.
-    // Выбрасывает std::logic_error, если оценить характеристику невозможно
-    virtual double eval() const = 0;
-    // Возвращает название статистики
-    virtual const char* name() const = 0;
+	virtual ~Statistics() = default;
+	// Задает следующее значение из входной последовательности
+	virtual void update(double next) = 0;
+	// Возвращает величину статистической характеристики.
+	// Выбрасывает std::logic_error, если оценить характеристику невозможно
+	virtual double eval() const = 0;
+	// Возвращает название статистики
+	virtual const char *name() const = 0;
 };
 
-
 // Реализовать
-class Min : public Statistics {
+class Min : public Statistics
+{
 public:
 	Min() : m_min{std::numeric_limits<double>::max()}
 	{
@@ -34,21 +36,22 @@ public:
 
 	double eval() const override
 	{
-      	if (m_min == std::numeric_limits<double>::max()) {
-          throw std::logic_error("Cannot calculate: empty sequence.");
-    }      
-		else return m_min;
+		if (m_min == std::numeric_limits<double>::max())
+		{
+			throw std::logic_error("Cannot calculate: empty sequence.");
+		}
+		else
+			return m_min;
 	}
 
 	const char *name() const override
 	{
-    return "Min";
+		return "Min";
 	}
 
 private:
 	double m_min;
 };
-
 
 class Max : public Statistics
 {
@@ -67,10 +70,12 @@ public:
 
 	double eval() const override
 	{
-    if (m_max == std::numeric_limits<double>::lowest()) {
-      throw std::logic_error("Cannot calculate: empty sequence.");
-    }
-	  else return m_max;
+		if (m_max == std::numeric_limits<double>::lowest())
+		{
+			throw std::logic_error("Cannot calculate: empty sequence.");
+		}
+		else
+			return m_max;
 	}
 
 	const char *name() const override
@@ -82,8 +87,8 @@ private:
 	double m_max;
 };
 
-
-class Mean : public Statistics {
+class Mean : public Statistics
+{
 public:
 	Mean() : m_counter{0}, m_sum{0.0}
 	{
@@ -99,10 +104,11 @@ public:
 	{
 		if (m_counter == 0)
 		{
-		  throw std::logic_error("Cannot calculate: empty sequence.");
+			throw std::logic_error("Cannot calculate: empty sequence.");
 		}
 
-		else return static_cast<double>(m_sum / m_counter);
+		else
+			return static_cast<double>(m_sum / m_counter);
 	}
 
 	const char *name() const override
@@ -114,7 +120,6 @@ private:
 	int m_counter;
 	double m_sum;
 };
-
 
 class StandardDeviation : public Statistics
 {
@@ -131,30 +136,31 @@ public:
 	{
 		if (m_seq.empty())
 		{
-		  throw std::logic_error("Cannot calculate: empty sequence.");
+			throw std::logic_error("Cannot calculate: empty sequence.");
 		}
 
-        else {
-		double sum{0.0};
-
-		// вычислить среднее арифметическое
-		for (double nextVal : m_seq)
+		else
 		{
-			sum += nextVal;
-		}
-		double mean = static_cast<double>(sum / m_seq.size());
+			double sum{0.0};
 
-		// вычислить среднее квадратическое отклонение
-		sum = 0.0;
-		for (double nextVal : m_seq)
-		{
-			double deviation = nextVal - mean;
-			sum += pow(deviation, 2);
+			// вычислить среднее арифметическое
+			for (double nextVal : m_seq)
+			{
+				sum += nextVal;
+			}
+			double mean = static_cast<double>(sum / m_seq.size());
+
+			// вычислить среднее квадратическое отклонение
+			sum = 0.0;
+			for (double nextVal : m_seq)
+			{
+				double deviation = nextVal - mean;
+				sum += pow(deviation, 2);
+			}
+			// и возвратить результат метода
+			return sqrt(static_cast<double>(sum / m_seq.size()));
 		}
-		// и возвратить результат метода
-		return sqrt(static_cast<double>(sum / m_seq.size()));
-	  }
-    }
+	}
 
 	const char *name() const override
 	{
@@ -164,3 +170,21 @@ public:
 private:
 	std::vector<double> m_seq;
 };
+
+
+int main() {
+    std::vector<std::unique_ptr<Statistics>> stats;
+    stats.emplace_back(dynamic_cast<Statistics*>(new Min));
+    stats.emplace_back(dynamic_cast<Statistics*>(new Mean));
+    stats.emplace_back(dynamic_cast<Statistics*>(new StandardDeviation));
+
+    double val;
+    while (std::cin >> val) {
+        for (auto& stat: stats) {
+            stat->update(val);
+        }
+    }
+    for (auto& stat: stats) {
+        std::cout << stat->name() << ":\t" << stat->eval() << std::endl;
+    }
+}
