@@ -9,13 +9,13 @@ public:
     Vector() : memoryBlock_(nullptr), size_{0} {}
 
     // Конструктор копирования /copy constructor/
-        // Vector(const Vector &other) = delete;
+    Vector(const Vector &other) = delete;
 
     // Копирующий оператор присваивания /copy assignment operator/
-        // Vector &operator=(const Vector &other) = delete;
+    Vector &operator=(const Vector &other) = delete;
 
     // Деструктор /destructor/
-        // ~Vector() { delete[] memoryBlock_; }
+    ~Vector() { delete[] memoryBlock_; }
 
     // Метод класса /member function/: получить текущий размер контейнера ( getSize )
     size_t getSize() const

@@ -132,8 +132,8 @@ TEST_F(VectorFixture, pushBack)
     vector.pushBack(sample);
 
     // Assert
-    EXPECT_EQ(sample, vector[elementCount]);
-    EXPECT_EQ(vector.getSize(), elementCount + 1);
+    ASSERT_EQ(sample, vector[elementCount]);
+    ASSERT_EQ(vector.getSize(), elementCount + 1);
 }
 
 TEST_F(VectorFixture, eraseBack)
@@ -147,67 +147,12 @@ TEST_F(VectorFixture, eraseBack)
     vector.erase(elementCount);
     
     // Assert
-    EXPECT_NE(sample, vector[elementCount - 1]);
-    EXPECT_EQ(vector.getSize(), elementCount);
+    ASSERT_NE(sample, vector[elementCount - 1]);
+    ASSERT_EQ(vector.getSize(), elementCount);
 }
 
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-}
-
-
-TEST(Vector, copyConstructor)
-{
-    // Arrange
-    const size_t count = 10;
-    Vector<size_t> vector1;
-
-    // Act
-    for (size_t i = 0; i < count; ++i)
-    {
-        vector1.pushBack(i);
-    }
-    Vector<size_t> vector2 = vector1;
-
-    // Assert
-    bool comparison = true;
-    for (size_t i = 0; i < count; ++i)
-    {
-        if (vector1[i] != vector2[i])
-        {
-            comparison = false;
-            break;
-        }
-    }
-
-    ASSERT_EQ(true, comparison);
-}
-
-TEST(Vector, copyAassignmentOperator)
-{
-    // Arrange
-    const size_t count = 10;
-    Vector<size_t> vector1, vector2;
-
-    // Act
-    for (size_t i = 0; i < count; ++i)
-    {
-        vector1.pushBack(i);
-    }
-    vector2 = vector1;
-
-    // Assert
-    bool comparison = true;
-    for (size_t i = 0; i < count; ++i)
-    {
-        if (vector1[i] != vector2[i])
-        {
-            comparison = false;
-            break;
-        }
-    }
-
-    ASSERT_EQ(true, comparison);
 }
