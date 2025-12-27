@@ -46,3 +46,7 @@ build/
 # vscode
 .vscode/
 
+# google testing framework src
+googletest_src/
+
+
