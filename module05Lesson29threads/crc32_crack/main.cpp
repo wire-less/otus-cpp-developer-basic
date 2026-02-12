@@ -1,15 +1,18 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <thread>
 #include <vector>
 
 #include "CRC32.hpp"
 #include "IO.hpp"
 
 /// @brief Переписывает последние 4 байта значением value
-void replaceLastFourBytes(std::vector<char> &data, uint32_t value) {
-  std::copy_n(reinterpret_cast<const char *>(&value), 4, data.end() - 4);
+/*
+void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
+  std::copy_n(reinterpret_cast<const char*>(&value), 4, data.end() - 4);
 }
+*/
 
 /**
  * @brief Формирует новый вектор с тем же CRC32, добавляя в конец оригинального
@@ -22,8 +25,9 @@ void replaceLastFourBytes(std::vector<char> &data, uint32_t value) {
  * оригинального вектора
  * @return новый вектор
  */
-std::vector<char> hack(const std::vector<char> &original,
-                       const std::string &injection) {
+std::vector<char> hack(const std::vector<char> original,
+                       const std::string injection, const uint32_t start,
+                       const uint32_t end) {
   const uint32_t originalCrc32 = crc32(original.data(), original.size());
 
   std::vector<char> result(original.size() + injection.size() + 4);
@@ -34,28 +38,32 @@ std::vector<char> hack(const std::vector<char> &original,
    * Внимание: код ниже крайне не оптимален.
    * В качестве доп. задания устраните избыточные вычисления
    */
-  const size_t maxVal = std::numeric_limits<uint32_t>::max();
-  for (size_t i = 0; i < maxVal; ++i) {
+
+  for (u_int32_t i = start; i < end; ++i) {
     // Заменяем последние четыре байта на значение i
-    replaceLastFourBytes(result, uint32_t(i));
+    // replaceLastFourBytes(result, uint32_t(i));
+    std::copy_n(reinterpret_cast<const char*>(&i), 4, result.end() - 4);
+
     // Вычисляем CRC32 текущего вектора result
     auto currentCrc32 = crc32(result.data(), result.size());
 
     if (currentCrc32 == originalCrc32) {
-      std::cout << "Success\n";
-      return result;
+      std::cout << "Success.\n*************************************************"
+                   "***************************\n";
+      return result;  // вернуть найденный локальный результат в массив векторов
     }
     // Отображаем прогресс
     if (i % 1000 == 0) {
-      std::cout << "progress: "
-                << static_cast<double>(i) / static_cast<double>(maxVal)
+      std::cout << "progress of batch " << start << '-' << end << ':'
+                << static_cast<double>(start) / static_cast<double>(end)
                 << std::endl;
     }
   }
-  throw std::logic_error("Can't hack");
+  // throw std::logic_error("Can't hack");
+  return {};  // вернуть пустой вектор при неудаче подбора
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (argc != 3) {
     std::cerr << "Call with two args: " << argv[0]
               << " <input file> <output file>\n";
@@ -63,12 +71,65 @@ int main(int argc, char **argv) {
   }
 
   try {
+    // определить количество потоков
+    uint32_t numberOfThreads = std::thread::hardware_concurrency();
+
+    // определить количество поддиапазонов для подбора
+    const uint32_t maxVal = std::numeric_limits<uint32_t>::max();
+    uint32_t batchSize = maxVal / numberOfThreads;
+
     const std::vector<char> data = readFromFile(argv[1]);
-    const std::vector<char> badData = hack(data, "He-he-he");
-    writeToFile(argv[2], badData);
-  } catch (std::exception &ex) {
+
+    std::vector<std::thread> threads;
+    threads.reserve(numberOfThreads);
+
+    // объявить массив результатов потоков
+    std::vector<std::vector<char>> results(numberOfThreads);
+
+    // менять поддиапазон
+    for (uint32_t idx = 0; idx < numberOfThreads; ++idx) {
+      uint32_t start = idx * batchSize;
+      uint32_t end = (idx == numberOfThreads - 1) ? maxVal : start + batchSize;
+
+      // и стартовать потоки
+      threads.emplace_back([&results, data, start, end, idx]() {
+        try {
+          results[idx] = hack(data, "He-he-he", start, end);
+        } catch (const std::exception& e) {
+          std::cerr << "Thread error: " << e.what() << std::endl;
+          results[idx] = {};
+        }
+      });
+    }
+
+    // собрать потоки
+    for (auto& tObject : threads) {
+      tObject.join();
+    }
+
+    // const std::vector<char> badData = hack(data, "He-he-he");
+    // writeToFile(argv[2], badData);
+
+    // обработать массив результатов работы потоков
+    for (const auto& result : results) {
+      if (!result.empty()) {
+        writeToFile(argv[2], result);
+        std::cout << "\nWritten to file: " << argv[2]
+                  << "\n*******************************************************"
+                     "*********************\n";
+        return 0;
+      }
+    }
+
+    std::cerr << "Can't hack\n";
+    // ничего не нашли подбором
+    return 3;
+  } catch (std::exception& ex) {
     std::cerr << ex.what() << '\n';
+    // прочие ошибки
     return 2;
   }
+
+  // успех
   return 0;
 }
