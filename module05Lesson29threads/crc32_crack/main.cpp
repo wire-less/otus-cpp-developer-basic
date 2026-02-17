@@ -7,6 +7,11 @@
 #include "CRC32.hpp"
 #include "IO.hpp"
 
+/// @brief Переписывает последние 4 байта значением value
+void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
+  std::copy_n(reinterpret_cast<const char*>(&value), 4, data.end() - 4);
+}
+
 /**
  * @brief Формирует новый вектор с тем же CRC32, добавляя в конец оригинального
  * строку injection и дополнительные 4 байта
@@ -19,14 +24,8 @@
  * @return новый вектор
  */
 std::vector<char> hack(const std::vector<char>& original,
-                       const std::string& injection, uint32_t start,
-                       uint32_t end) {
-  // вычислить crc32 исходного файла
-  const uint32_t originalCrc32 = crc32(original.data(), original.size());
-  // вычислить crc32 исходного файла + строка injection
-  const uint32_t injectionCrc32 =
-      crc32(injection.data(), injection.size(), originalCrc32);
-
+                       const std::string& injection, uint32_t originalCrc32,
+                       uint32_t injectionCrc32, uint32_t start, uint32_t end) {
   std::vector<char> result(original.size() + injection.size() + 4);
   auto it = std::copy(original.begin(), original.end(), result.begin());
   std::copy(injection.begin(), injection.end(), it);
@@ -37,9 +36,10 @@ std::vector<char> hack(const std::vector<char>& original,
 
     // вычислить crc32 исходного файла + строка injection + 4 новых байта
     uint32_t resultCrc32 =
-        crc32(reinterpret_cast<const char*>(&i), 4, injectionCrc32);
+        crc32(reinterpret_cast<const char*>(&i), 4, ~injectionCrc32);
 
     if (resultCrc32 == originalCrc32) {
+      replaceLastFourBytes(result, i);
       std::cout << "\nSuccess.\n";
       // вернуть найденный локальный результат как элемент массива векторов
       return result;
@@ -75,7 +75,14 @@ int main(int argc, char** argv) {
     const uint32_t maxVal = std::numeric_limits<uint32_t>::max();
     uint32_t batchSize = maxVal / numberOfThreads;
 
+    const std::string INJECTION = "He-he-he";
     const std::vector<char> data = readFromFile(argv[1]);
+
+    // вычислить crc32 исходного файла
+    const uint32_t originalCrc32 = crc32(data.data(), data.size());
+    // вычислить crc32 исходного файла + строка injection
+    const uint32_t injectionCrc32 =
+        crc32(INJECTION.data(), INJECTION.size(), ~originalCrc32);
 
     // объявить и зарезервировать объект для запуска потоков
     std::vector<std::thread> threads;
@@ -90,20 +97,25 @@ int main(int argc, char** argv) {
       uint32_t end = (idx == numberOfThreads - 1) ? maxVal : start + batchSize;
 
       // и стартовать потоки
-      threads.emplace_back(
-          [&resultOfThread = results[idx], &data, start, end]() {
-            try {
-              resultOfThread = hack(data, "He-he-he", start, end);
-            } catch (const std::exception& e) {
-              std::cerr << "Thread error: " << e.what() << std::endl;
-              resultOfThread.clear();
-            }
-          });
+      threads.emplace_back([&resultOfThread = results[idx], &data, start, end,
+                            INJECTION, originalCrc32, injectionCrc32]() {
+        try {
+          resultOfThread =
+              hack(data, INJECTION, originalCrc32, injectionCrc32, start, end);
+        } catch (const std::exception& e) {
+          std::cerr << "Thread error: " << e.what() << std::endl;
+          resultOfThread.clear();
+        }
+      });
     }
 
     // собрать потоки
     for (auto& tObject : threads) {
-      tObject.join();
+      if (tObject.joinable())
+        tObject.join();
+      else
+        // прочие ошибки
+        return 2;
     }
 
     // обработать массив результатов работы потоков
