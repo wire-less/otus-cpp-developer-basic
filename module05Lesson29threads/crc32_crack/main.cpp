@@ -29,6 +29,8 @@ std::vector<char> hack(const std::vector<char> original,
                        const std::string injection, const uint32_t start,
                        const uint32_t end) {
   const uint32_t originalCrc32 = crc32(original.data(), original.size());
+  const uint32_t injectionCrc32 =
+      crc32(injection.data(), injection.size(), originalCrc32);
 
   std::vector<char> result(original.size() + injection.size() + 4);
   auto it = std::copy(original.begin(), original.end(), result.begin());
@@ -39,17 +41,17 @@ std::vector<char> hack(const std::vector<char> original,
    * В качестве доп. задания устраните избыточные вычисления
    */
 
-  for (u_int32_t i = start; i < end; ++i) {
+  for (uint32_t i = start; i < end; ++i) {
     // Заменяем последние четыре байта на значение i
     // replaceLastFourBytes(result, uint32_t(i));
     std::copy_n(reinterpret_cast<const char*>(&i), 4, result.end() - 4);
 
     // Вычисляем CRC32 текущего вектора result
-    auto currentCrc32 = crc32(result.data(), result.size());
+    uint32_t resultCrc32 =
+        crc32(reinterpret_cast<const char*>(&i), 4, injectionCrc32);
 
-    if (currentCrc32 == originalCrc32) {
-      std::cout << "Success.\n*************************************************"
-                   "***************************\n";
+    if (resultCrc32 == originalCrc32) {
+      std::cout << "\nSuccess.\n";
       return result;  // вернуть найденный локальный результат в массив векторов
     }
     // Отображаем прогресс
@@ -114,9 +116,7 @@ int main(int argc, char** argv) {
     for (const auto& result : results) {
       if (!result.empty()) {
         writeToFile(argv[2], result);
-        std::cout << "\nWritten to file: " << argv[2]
-                  << "\n*******************************************************"
-                     "*********************\n";
+        std::cout << "\nWritten to file: " << argv[2] << "\n";
         return 0;
       }
     }
