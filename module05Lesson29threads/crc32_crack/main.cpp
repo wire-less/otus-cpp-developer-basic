@@ -7,13 +7,6 @@
 #include "CRC32.hpp"
 #include "IO.hpp"
 
-/// @brief Переписывает последние 4 байта значением value
-/*
-void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
-  std::copy_n(reinterpret_cast<const char*>(&value), 4, data.end() - 4);
-}
-*/
-
 /**
  * @brief Формирует новый вектор с тем же CRC32, добавляя в конец оригинального
  * строку injection и дополнительные 4 байта
@@ -25,10 +18,12 @@ void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
  * оригинального вектора
  * @return новый вектор
  */
-std::vector<char> hack(const std::vector<char> original,
-                       const std::string injection, const uint32_t start,
-                       const uint32_t end) {
+std::vector<char> hack(const std::vector<char>& original,
+                       const std::string& injection, uint32_t start,
+                       uint32_t end) {
+  // вычислить crc32 исходного файла
   const uint32_t originalCrc32 = crc32(original.data(), original.size());
+  // вычислить crc32 исходного файла + строка injection
   const uint32_t injectionCrc32 =
       crc32(injection.data(), injection.size(), originalCrc32);
 
@@ -36,28 +31,25 @@ std::vector<char> hack(const std::vector<char> original,
   auto it = std::copy(original.begin(), original.end(), result.begin());
   std::copy(injection.begin(), injection.end(), it);
 
-  /*
-   * Внимание: код ниже крайне не оптимален.
-   * В качестве доп. задания устраните избыточные вычисления
-   */
-
   for (uint32_t i = start; i < end; ++i) {
     // Заменяем последние четыре байта на значение i
-    // replaceLastFourBytes(result, uint32_t(i));
     std::copy_n(reinterpret_cast<const char*>(&i), 4, result.end() - 4);
 
-    // Вычисляем CRC32 текущего вектора result
+    // вычислить crc32 исходного файла + строка injection + 4 новых байта
     uint32_t resultCrc32 =
         crc32(reinterpret_cast<const char*>(&i), 4, injectionCrc32);
 
     if (resultCrc32 == originalCrc32) {
       std::cout << "\nSuccess.\n";
-      return result;  // вернуть найденный локальный результат в массив векторов
+      // вернуть найденный локальный результат как элемент массива векторов
+      return result;
     }
+
     // Отображаем прогресс
-    if (i % 1000 == 0) {
+    if (i % 10000 == 0) {
       std::cout << "progress of batch " << start << '-' << end << ':'
-                << static_cast<double>(start) / static_cast<double>(end)
+                << static_cast<double>(i - start) /
+                       static_cast<double>(end - start)
                 << std::endl;
     }
   }
@@ -75,13 +67,17 @@ int main(int argc, char** argv) {
   try {
     // определить количество потоков
     uint32_t numberOfThreads = std::thread::hardware_concurrency();
+    if (numberOfThreads == 0) {
+      numberOfThreads = 2;
+    }
 
-    // определить количество поддиапазонов для подбора
+    // определить размер поддиапазонов для подбора
     const uint32_t maxVal = std::numeric_limits<uint32_t>::max();
     uint32_t batchSize = maxVal / numberOfThreads;
 
     const std::vector<char> data = readFromFile(argv[1]);
 
+    // объявить и зарезервировать объект для запуска потоков
     std::vector<std::thread> threads;
     threads.reserve(numberOfThreads);
 
@@ -94,23 +90,21 @@ int main(int argc, char** argv) {
       uint32_t end = (idx == numberOfThreads - 1) ? maxVal : start + batchSize;
 
       // и стартовать потоки
-      threads.emplace_back([&results, data, start, end, idx]() {
-        try {
-          results[idx] = hack(data, "He-he-he", start, end);
-        } catch (const std::exception& e) {
-          std::cerr << "Thread error: " << e.what() << std::endl;
-          results[idx] = {};
-        }
-      });
+      threads.emplace_back(
+          [&resultOfThread = results[idx], &data, start, end]() {
+            try {
+              resultOfThread = hack(data, "He-he-he", start, end);
+            } catch (const std::exception& e) {
+              std::cerr << "Thread error: " << e.what() << std::endl;
+              resultOfThread.clear();
+            }
+          });
     }
 
     // собрать потоки
     for (auto& tObject : threads) {
       tObject.join();
     }
-
-    // const std::vector<char> badData = hack(data, "He-he-he");
-    // writeToFile(argv[2], badData);
 
     // обработать массив результатов работы потоков
     for (const auto& result : results) {
@@ -124,7 +118,7 @@ int main(int argc, char** argv) {
     std::cerr << "Can't hack\n";
     // ничего не нашли подбором
     return 3;
-  } catch (std::exception& ex) {
+  } catch (const std::exception& ex) {
     std::cerr << ex.what() << '\n';
     // прочие ошибки
     return 2;
