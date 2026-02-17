@@ -31,14 +31,12 @@ std::vector<char> hack(const std::vector<char>& original,
   std::copy(injection.begin(), injection.end(), it);
 
   for (uint32_t i = start; i < end; ++i) {
-    // Заменяем последние четыре байта на значение i
-    std::copy_n(reinterpret_cast<const char*>(&i), 4, result.end() - 4);
-
-    // вычислить crc32 исходного файла + строка injection + 4 новых байта
+        // вычислить crc32 исходного файла + строка injection + 4 новых байта
     uint32_t resultCrc32 =
         crc32(reinterpret_cast<const char*>(&i), 4, ~injectionCrc32);
 
     if (resultCrc32 == originalCrc32) {
+      // Заменяем последние четыре байта на значение i
       replaceLastFourBytes(result, i);
       std::cout << "\nSuccess.\n";
       // вернуть найденный локальный результат как элемент массива векторов
