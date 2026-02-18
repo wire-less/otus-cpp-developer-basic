@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -21,8 +22,8 @@ void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
  * @param end конец диапазона поиска
  * @return найденное значение или 0 при неудаче
  */
-uint32_t hack(uint32_t originalCrc32, uint32_t injectionCrc32, uint32_t start,
-              uint32_t end) {
+std::optional<uint32_t> hack(uint32_t originalCrc32, uint32_t injectionCrc32,
+                             uint32_t start, uint32_t end) {
   for (uint32_t i = start; i < end; ++i) {
     // вычислить crc32 исходного файла + строка injection + 4 новых байта
     uint32_t resultCrc32 =
@@ -42,8 +43,7 @@ uint32_t hack(uint32_t originalCrc32, uint32_t injectionCrc32, uint32_t start,
                 << std::endl;
     }
   }
-  // throw std::logic_error("Can't hack");
-  return 0;  // не найдено
+  return std::nullopt;  // не найдено
 }
 
 int main(int argc, char** argv) {
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     threads.reserve(numberOfThreads);
 
     // объявить массив результатов потоков
-    std::vector<uint32_t> results(numberOfThreads, 0);
+    std::vector<std::optional<uint32_t>> results(numberOfThreads);
 
     // менять поддиапазон
     for (uint32_t idx = 0; idx < numberOfThreads; ++idx) {
@@ -109,17 +109,18 @@ int main(int argc, char** argv) {
 
     // обработать массив результатов работы потоков
     for (const auto& result : results) {
-      if (result != 0) {
+      if (result != std::nullopt) {
         // собрать результирующий вектор из оригинального + INJECTION +
         // найденное значение для 4-х байт
         std::vector<char> forgedResult(data.size() + INJECTION.size() + 4);
         auto it = std::copy(data.begin(), data.end(), forgedResult.begin());
         std::copy(INJECTION.begin(), INJECTION.end(), it);
         // Заменяем последние четыре байта на подобранное значение
-        replaceLastFourBytes(forgedResult, result);
+        replaceLastFourBytes(forgedResult, result.value());
 
         writeToFile(argv[2], forgedResult);
         std::cout << "\nWritten to file: " << argv[2] << "\n";
+        // успех
         return 0;
       }
     }
@@ -132,7 +133,4 @@ int main(int argc, char** argv) {
     // прочие ошибки
     return 2;
   }
-
-  // успех
-  return 0;
 }
