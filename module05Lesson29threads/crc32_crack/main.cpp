@@ -13,34 +13,25 @@ void replaceLastFourBytes(std::vector<char>& data, uint32_t value) {
 }
 
 /**
- * @brief Формирует новый вектор с тем же CRC32, добавляя в конец оригинального
- * строку injection и дополнительные 4 байта
- * @details При формировании нового вектора последние 4 байта не несут полезной
- * нагрузки и подбираются таким образом, чтобы CRC32 нового и оригинального
- * вектора совпадали
- * @param original оригинальный вектор
- * @param injection произвольная строка, которая будет добавлена после данных
- * оригинального вектора
- * @return новый вектор
+ * @brief Ищет значение, которое обеспечит равенство CRC32 оригинальной строки
+ * и строки с INJECTION + 4 байта
+ * @param originalCrc32 оригинального вектора
+ * @param injectionCrc32 CRC32 INJECTION
+ * @param start начало диапазона поиска
+ * @param end конец диапазона поиска
+ * @return найденное значение или 0 при неудаче
  */
-std::vector<char> hack(const std::vector<char>& original,
-                       const std::string& injection, uint32_t originalCrc32,
-                       uint32_t injectionCrc32, uint32_t start, uint32_t end) {
-  std::vector<char> result(original.size() + injection.size() + 4);
-  auto it = std::copy(original.begin(), original.end(), result.begin());
-  std::copy(injection.begin(), injection.end(), it);
-
+uint32_t hack(uint32_t originalCrc32, uint32_t injectionCrc32, uint32_t start,
+              uint32_t end) {
   for (uint32_t i = start; i < end; ++i) {
-        // вычислить crc32 исходного файла + строка injection + 4 новых байта
+    // вычислить crc32 исходного файла + строка injection + 4 новых байта
     uint32_t resultCrc32 =
         crc32(reinterpret_cast<const char*>(&i), 4, ~injectionCrc32);
 
     if (resultCrc32 == originalCrc32) {
-      // Заменяем последние четыре байта на значение i
-      replaceLastFourBytes(result, i);
       std::cout << "\nSuccess.\n";
-      // вернуть найденный локальный результат как элемент массива векторов
-      return result;
+      // вернуть найденное значение
+      return i;
     }
 
     // Отображаем прогресс
@@ -52,7 +43,7 @@ std::vector<char> hack(const std::vector<char>& original,
     }
   }
   // throw std::logic_error("Can't hack");
-  return {};  // вернуть пустой вектор при неудаче подбора
+  return 0;  // не найдено
 }
 
 int main(int argc, char** argv) {
@@ -87,7 +78,7 @@ int main(int argc, char** argv) {
     threads.reserve(numberOfThreads);
 
     // объявить массив результатов потоков
-    std::vector<std::vector<char>> results(numberOfThreads);
+    std::vector<uint32_t> results(numberOfThreads, 0);
 
     // менять поддиапазон
     for (uint32_t idx = 0; idx < numberOfThreads; ++idx) {
@@ -95,14 +86,13 @@ int main(int argc, char** argv) {
       uint32_t end = (idx == numberOfThreads - 1) ? maxVal : start + batchSize;
 
       // и стартовать потоки
-      threads.emplace_back([&resultOfThread = results[idx], &data, start, end,
-                            INJECTION, originalCrc32, injectionCrc32]() {
+      threads.emplace_back([&resultOfThread = results[idx], start, end,
+                            originalCrc32, injectionCrc32]() {
         try {
-          resultOfThread =
-              hack(data, INJECTION, originalCrc32, injectionCrc32, start, end);
+          resultOfThread = hack(originalCrc32, injectionCrc32, start, end);
         } catch (const std::exception& e) {
           std::cerr << "Thread error: " << e.what() << std::endl;
-          resultOfThread.clear();
+          resultOfThread = 0;
         }
       });
     }
@@ -111,6 +101,7 @@ int main(int argc, char** argv) {
     for (auto& tObject : threads) {
       if (tObject.joinable())
         tObject.join();
+
       else
         // прочие ошибки
         return 2;
@@ -118,8 +109,16 @@ int main(int argc, char** argv) {
 
     // обработать массив результатов работы потоков
     for (const auto& result : results) {
-      if (!result.empty()) {
-        writeToFile(argv[2], result);
+      if (result != 0) {
+        // собрать результирующий вектор из оригинального + INJECTION +
+        // найденное значение для 4-х байт
+        std::vector<char> forgedResult(data.size() + INJECTION.size() + 4);
+        auto it = std::copy(data.begin(), data.end(), forgedResult.begin());
+        std::copy(INJECTION.begin(), INJECTION.end(), it);
+        // Заменяем последние четыре байта на подобранное значение
+        replaceLastFourBytes(forgedResult, result);
+
+        writeToFile(argv[2], forgedResult);
         std::cout << "\nWritten to file: " << argv[2] << "\n";
         return 0;
       }
